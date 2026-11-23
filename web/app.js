@@ -318,8 +318,8 @@
       const carrier = core.heldBy !== null ? sim.robots[core.heldBy] : null;
       const grounded = core.z <= LOM.propHalf(core) + .007;
       text("core-status", core.home ? "На трезубце" : carrier ? "Несёт " + carrier.name :
-        grounded && LOM.inBase(core, "blue", LOM.propWidth(core)) ? "На синей базе" :
-        grounded && LOM.inBase(core, "red", LOM.propWidth(core)) ? "На красной базе" : "В поле");
+        grounded && LOM.inBase(core, "blue", LOM.placed) ? "На синей базе" :
+        grounded && LOM.inBase(core, "red", LOM.placed) ? "На красной базе" : "В поле");
       const hanging = (side) => sim.robots.filter((r) => r.hook?.side === side && r.z > .012).length;
       const blue = hanging("blue"), red = hanging("red");
       text("hang-status", blue || red || sim.finished ? `Синие ${blue} · Красные ${red}` :

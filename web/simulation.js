@@ -86,6 +86,8 @@ const LOM = (() => {
   const mastGuides = design.body.filter((part) => part.shape === "upright");
   const crossbeam = field.tridentCrossAt * Math.SQRT2;
   const pickupAssistDistance = 0.62;
+  // A prop counts as placed when its centre is at least this far inside the base square (rules 4.1: body on the base mat).
+  const placed = 0.008;
   const stopped = { speed: 0, turn: 0, brake: true };
 
   function railApproach(robot, prop) {
@@ -602,7 +604,7 @@ const LOM = (() => {
       if (plan.assist) return this.assistCommand(robot, plan);
       if (plan.id === "core" && !robot.held) {
         const core = this.props.find((p) => p.id === plan.id);
-        if (core.heldBy !== null || inBase(core, "blue", propWidth(core)) || inBase(core, "red", propWidth(core))) {
+        if (core.heldBy !== null || inBase(core, "blue", placed) || inBase(core, "red", placed)) {
           robot.plan = null;
           return idle;
         }
@@ -820,7 +822,7 @@ const LOM = (() => {
         for (const prop of this.props) {
           if (prop.heldBy !== null || prop.home || prop.kind !== "cube" || prop.z > propHalf(prop) + 0.005) continue;
           if (prop.id === side + "_" + this.tag && this.division === "junior") continue;
-          if (inBase(prop, side, 0.008)) points += 300;
+          if (inBase(prop, side, placed)) points += 300;
         }
         if (this.division === "junior") {
           const target = this.props.find((prop) => prop.id === side + "_" + this.tag);
@@ -836,18 +838,19 @@ const LOM = (() => {
       if (this.time < round.exploration && this.mode === "match") this.countScouting();
       for (const side of ["blue", "red"]) {
         let total = this.scouting[side] + this.adjustments[side];
+        // The board shows the score as if the match ended now (rules 5.1): cubes 100, Ocean Core 300,
+        // hanging 400 each plus 200 for both robots, 50 for each opponent off the mat.
         if (this.time >= round.exploration || this.mode === "practice") {
           for (const prop of this.props) {
             if (prop.heldBy !== null || prop.home || prop.z > propHalf(prop) + 0.007) continue;
-            if (prop.kind === "core" && !this.finished && this.mode !== "practice") continue;
-            if (!inBase(prop, side, prop.kind === "core" ? propWidth(prop) : 0.008)) continue;
+            if (!inBase(prop, side, placed)) continue;
             total += prop.kind === "core" ? 300 : 100;
           }
         }
+        const suspended = this.robots.filter((r) => r.side === side && r.hook?.side === side && r.z > 0.012);
+        total += 400 * suspended.length + (suspended.length === 2 ? 200 : 0);
+        total += this.robots.filter((r) => r.out && r.side !== side).length * 50;
         if (this.finished) {
-          const suspended = this.robots.filter((r) => r.side === side && r.hook?.side === side && r.z > 0.012);
-          total += 400 * suspended.length + (suspended.length === 2 ? 200 : 0);
-          total += this.robots.filter((r) => r.out && r.side !== side).length * 50;
           total += this.robots.filter((r) => r.side === side && !r.out && !suspended.includes(r) &&
             Math.abs(r.x - r.y) < 0.139 && (r.x + r.y) * signOf(side) > 0.184 &&
             (r.x + r.y) * signOf(side) < 0.68).length * 100;
@@ -914,7 +917,7 @@ const LOM = (() => {
   }
 
   return {
-    model, Simulation, dt, bodyPoint, propHalf, propWidth, inBase, clamp, signOf,
+    model, Simulation, dt, bodyPoint, propHalf, propWidth, inBase, clamp, signOf, placed,
     csvHead: "time_s,x_m,y_m,z_m,yaw_rad,pitch_rad,roll_rad,speed_m_s,left_rad,right_rad,lift_m,stability,held,blue,red,hook",
   };
 })();
