@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Офлайн-тренажёр робота M01 для MARC League of Mecha-Clash 2027.">
+  <title>MARC Lab · Тренажёр LOM 2027</title>
+  <link rel="stylesheet" href="web/style.css">
+  <script src="web/model.js" defer></script>
+  <script src="web/simulation.js" defer></script>
+  <script src="web/scene.js" defer></script>
+  <script src="web/app.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-inner">
+      <a class="brand" href="simulator.html" aria-label="MARC Lab, главная">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>MARC<span class="brand-lab">LAB</span></span>
+      </a>
+      <nav class="nav" aria-label="Разделы">
+        <button type="button" data-tab="field" aria-current="page">Арена</button>
+        <button type="button" data-tab="robot">Робот</button>
+        <button type="button" data-tab="lab">Полигон</button>
+      </nav>
+      <a class="guide" href="https://github.com/jjpacve/marc-lom-lab#readme">Руководство <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">LEAGUE OF MECHA-CLASH <span>2027</span></p>
+        <h1 id="page-title">Тренировочная арена</h1>
+      </div>
+      <div class="configuration" id="arena-controls">
+        <label>Режим
+          <select id="mode">
+            <option value="practice">Свободный заезд</option>
+            <option value="match">Матч 2 × 2</option>
+          </select>
+        </label>
+        <label id="division-label">Дивизион
+          <select id="division">
+            <option value="elementary">Elementary</option>
+            <option value="junior">Junior–Senior</option>
+            <option value="club">Club</option>
+          </select>
+        </label>
+      </div>
+      <div class="configuration" id="lab-controls" hidden>
+        <label>Испытание
+          <select id="course">
+            <option value="grip">Захват куба</option>
+            <option value="ramp">Рампа 12°</option>
+            <option value="step">Порог 12 мм</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <section class="left" aria-label="Виртуальная сцена">
+        <div class="scoreboard" id="scoreboard">
+          <div class="team blue"><span class="team-dot"></span><span class="team-label">Синие</span><strong id="blue-score">0</strong></div>
+          <div class="clock-block"><span class="clock-value" id="clock">—</span><span id="clock-caption">Без таймера</span></div>
+          <div class="team red"><strong id="red-score">0</strong><span class="team-label">Красные</span><span class="team-dot"></span></div>
+          <div id="phase-bar" class="phase-bar" aria-hidden="true" hidden><i></i><i></i><i></i><b id="clock-marker"></b></div>
+        </div>
+
+        <div class="stage" id="stage">
+          <canvas id="scene" tabindex="-1" aria-label="Трёхмерная модель поля MARC и роботов"></canvas>
+          <div class="stage-head">
+            <div class="stage-label"><span id="live-dot"></span><span id="scene-label">Undersea Core Contest</span></div>
+            <span class="dimensions" id="scene-size">1880 × 1880 мм</span>
+          </div>
+          <div class="stage-accessories">
+            <span id="scene-help">Перетащите для поворота · прокрутите для зума</span>
+            <div class="views" aria-label="Камера">
+              <button id="iso" type="button" aria-pressed="true">3D</button>
+              <button id="top" type="button" aria-pressed="false">Сверху</button>
+              <button id="home-view" type="button" title="Сбросить камеру" aria-label="Сбросить камеру">↺</button>
+            </div>
+          </div>
+          <div class="result" id="result" hidden>
+            <span>МАТЧ ЗАВЕРШЁН</span><strong id="winner"></strong>
+            <button type="button" id="again">Новый матч</button>
+          </div>
+        </div>
+
+        <div class="drive-bar" id="drive-bar">
+          <div class="drive-main">
+            <button id="play" class="primary" type="button"><span aria-hidden="true">▶</span> Начать тренировку</button>
+            <button type="button" class="button pickup-action" id="grip" aria-keyshortcuts="Space">Взять куб · пробел</button>
+            <button id="reset" class="button icon-button" type="button" title="Сбросить заезд" aria-label="Сбросить заезд">↺</button>
+          </div>
+          <button type="button" class="button" id="reset-card" hidden>Вернуться на старт</button>
+          <div class="drive-options">
+            <button id="auto" class="button" type="button" aria-pressed="false">Автопилот</button>
+            <label class="sim-rate">Темп
+              <select id="rate" aria-label="Темп симуляции">
+                <option value="1">1×</option><option value="2">2×</option><option value="5">5×</option>
+              </select>
+            </label>
+          </div>
+          <p id="pickup-hint" class="pickup-hint" role="status">Первый куб уже перед M01.</p>
+        </div>
+      </section>
+
+      <aside class="aside" id="pilot-panel" aria-label="Управление и телеметрия">
+        <section class="panel pilot">
+          <div class="panel-head">
+            <div><p class="eyebrow">ВАШ РОБОТ</p><h2>M01 <span>· 2WD</span></h2></div>
+            <span id="pilot-status" class="status">Ожидание</span>
+          </div>
+          <div class="stats">
+            <div><span>Скорость</span><strong id="speed">0,00</strong><small>м/с</small></div>
+            <div><span>Путь</span><strong id="path">0,00</strong><small>м</small></div>
+            <div><span>Захваты</span><strong id="captures">0</strong><small>шт.</small></div>
+          </div>
+          <div class="grip-row"><span>Захват</span><strong id="grip-status">Открыт</strong></div>
+          <div class="grip-row"><span>Высота захвата</span><strong id="lift-height">26 мм</strong></div>
+          <div id="field-missions" class="field-missions">
+            <div class="grip-row"><span>Океанское ядро</span><strong id="core-status">На трезубце</strong></div>
+            <div class="grip-row"><span>Подвес</span><strong id="hang-status">Пока закрыт</strong></div>
+          </div>
+          <div id="trial-stats" hidden>
+            <div class="grip-row"><span>Максимальная скорость</span><strong id="peak">0,00 м/с</strong></div>
+            <div class="grip-row"><span>Максимальный наклон</span><strong id="tilt">0,0°</strong></div>
+          </div>
+        </section>
+
+        <section class="panel commands">
+          <div class="panel-head">
+            <div><h2>Управление</h2></div>
+            <span class="status accent" id="control-mode">Старт</span>
+          </div>
+          <div class="control-row"><span>Движение</span><span class="keys">
+            <button type="button" data-hold="KeyW" aria-label="Вперёд">W</button>
+            <button type="button" data-hold="KeyA" aria-label="Влево">A</button>
+            <button type="button" data-hold="KeyS" aria-label="Назад">S</button>
+            <button type="button" data-hold="KeyD" aria-label="Вправо">D</button>
+          </span></div>
+          <div class="control-row"><span>Точный ход</span><span class="keys">
+            <button type="button" id="precision" aria-pressed="false" aria-label="Переключить точный ход" title="Удерживай Shift или нажми эту кнопку">Shift</button>
+          </span></div>
+          <div class="control-row"><span>Подъёмник</span><span class="keys">
+            <button type="button" data-hold="KeyQ" aria-label="Опустить">Q ↓</button>
+            <button type="button" data-hold="KeyE" aria-label="Поднять">E ↑</button>
+            <button type="button" id="target-height" aria-label="Выставить высоту выбранного предмета" title="Выставить высоту подсвеченного предмета">F</button>
+          </span></div>
+          <div class="control-row" id="hang-controls"><span>Зацепиться / спуститься</span><span class="keys">
+            <button type="button" id="hang" aria-label="Зацепиться за перекладину или спуститься">H</button>
+          </span></div>
+          <p class="panel-note" id="control-hint" hidden></p>
+        </section>
+
+        <section class="panel events">
+          <div class="panel-head">
+            <div><h2>Журнал</h2></div>
+            <button type="button" class="link-button" id="export" disabled>CSV ↓</button>
+          </div>
+          <ul id="event-list"><li class="empty">События появятся после старта.</li></ul>
+        </section>
+      </aside>
+
+      <aside class="aside" id="robot-panel" aria-label="Параметры робота" hidden>
+        <section class="panel pilot">
+          <div class="panel-head">
+            <div><p class="eyebrow">ПРОТОТИП</p><h2>M01 <span>· 2WD</span></h2></div>
+            <span class="status accent">STEP</span>
+          </div>
+          <div class="grip-row"><span>Стартовый габарит</span><strong>312 × 214 мм</strong></div>
+          <div class="grip-row"><span>Колёса / колея</span><strong>Ø 64 / 188 мм</strong></div>
+          <div class="grip-row"><span>Ход подъёмника</span><strong>246 мм</strong></div>
+          <div class="grip-row"><span>Модельная масса</span><strong>1,40 кг</strong></div>
+          <a class="primary file-link" href="cad/M01.step" download>Скачать M01.step <span aria-hidden="true">↓</span></a>
+        </section>
+        <section class="panel tuning">
+          <div class="panel-head"><div><h2>Параметры симуляции</h2></div></div>
+          <label>Макс. скорость <output id="speed-limit-value">0,52 м/с</output>
+            <input type="range" id="speed-limit" min="0.20" max="0.90" step="0.01" value="0.52">
+          </label>
+          <label>Сцепление с матом <output id="friction-value">0,82</output>
+            <input type="range" id="friction" min="0.12" max="1.30" step="0.01" value="0.82">
+          </label>
+          <label>Масса <output id="mass-value">1,40 кг</output>
+            <input type="range" id="mass" min="0.85" max="2.20" step="0.01" value="1.40">
+          </label>
+          <label>Высота центра масс <output id="cg-value">63 мм</output>
+            <input type="range" id="cg" min="0.035" max="0.160" step="0.001" value="0.063">
+          </label>
+          <p class="panel-note">Настройки применяются к заездам в браузере.</p>
+        </section>
+        <section class="panel files">
+          <a href="README.md#webots">Открытие проекта Webots <span>↗</span></a>
+        </section>
+      </aside>
+    </div>
+    <footer><span>Геометрия по Season Rules V1.0 · Общие правила V2.0</span><a href="https://www.marc-association.org/leagueofmecha-clash">MARC Association ↗</a></footer>
+  </main>
+</body>
+</html>

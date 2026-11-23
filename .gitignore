@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+*.pyc
+webots/controllers/lom_driver/smoke-results.json
+webots/controllers/lom_driver/hook-results.json
+reference/
